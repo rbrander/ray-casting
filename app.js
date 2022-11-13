@@ -12,34 +12,6 @@ const state = {
   keys: {}
 };
 
-const PLAYER_MOVE_DISTANCE = 5; // pixels
-const W_KEY = 87;
-const A_KEY = 65;
-const S_KEY = 83;
-const D_KEY = 68;
-const RADS_PER_DEGREE = Math.PI / 180;
-const COLORS = {
-  LIGHT_RED: '#e50000',
-  DARK_RED: '#b20000'
-}
-const MAP_WIDTH = 8; // map width (array)
-const MAP_HEIGHT = 8; // map height (array)
-const MAP_TILE_SIZE = 64; // each map cell in pixels
-const MAP = [
-  1, 1, 1, 1, 1, 1, 1, 1,
-  1, 0, 1, 0, 0, 0, 0, 1,
-  1, 0, 1, 0, 0, 0, 0, 1,
-  1, 0, 1, 0, 0, 0, 0, 1,
-  1, 0, 0, 0, 0, 0, 0, 1,
-  1, 0, 0, 0, 0, 1, 0, 1,
-  1, 0, 0, 0, 0, 0, 0, 1,
-  1, 1, 1, 1, 1, 1, 1, 1
-];
-
-// Given two points, return the length of the line via c² = a² + b²
-const getLineLength = (startX, startY, endX, endY) =>
-  Math.sqrt((endX - startX)*(endX - startX) + (endY - startY)*(endY - startY));
-
 const drawMap = () => {
   for (let y = 0; y < MAP_HEIGHT; y++) {
     for (let x = 0; x < MAP_WIDTH; x++) {
@@ -69,18 +41,15 @@ const drawPlayer = () => {
 };
 
 const drawRays = () => {
-  let rayAngle = state.playerAngle - 30 * RADS_PER_DEGREE;
-  if (rayAngle < 0) {
-    rayAngle += Math.PI * 2;
-  }
-  if (rayAngle > Math.PI * 2) {
-    rayAngle -= Math.PI * 2;
-  }
+  const NUM_RAYS = 60;
+  const NUM_RAYS_PER_SIDE = NUM_RAYS / 2;
+  let rayAngle = clamp(state.playerAngle - NUM_RAYS_PER_SIDE * RADS_PER_DEGREE, MIN_ANGLE, MAX_ANGLE);
   let xOffset, yOffset;
   let horizontalWallRayLength = 999999, verticalWallRayLength = 999999;
 
 
-  for (let ray = 0; ray < 60; ray++) {
+  for (let ray = 0; ray < NUM_RAYS; ray++) {
+    horizontalWallRayLength = 999999, verticalWallRayLength = 999999
     let depthOfField = 0;
 
     // Horizontal wall check
@@ -173,37 +142,26 @@ const drawRays = () => {
       ctx.strokeStyle = COLORS.DARK_RED;
       ctx.lineTo(horizontalRayX, horizontalRayY);
       rayLength = horizontalWallRayLength;
-    }  
+    }
     ctx.stroke();
 
-    // draw 3d walls in (320x160) viewport
-    let cosineBetweenPlayerAndRay = state.playerAngle - rayAngle;
-    if (cosineBetweenPlayerAndRay > Math.PI * 2) {
-      cosineBetweenPlayerAndRay -= Math.PI * 2;
-    } else if (cosineBetweenPlayerAndRay < 0) {
-      cosineBetweenPlayerAndRay += Math.PI * 2;
-    }
+    // draw 3d walls in (320x320) viewport
+    const VIEWPORT_WIDTH = 320;
+    const VIEWPORT_HEIGHT = 320;
+    let cosineBetweenPlayerAndRay = clamp(state.playerAngle - rayAngle, MIN_ANGLE, MAX_ANGLE);
     const rayDistance = rayLength * Math.cos(cosineBetweenPlayerAndRay); // fixes fish-eye
-    let lineHeight = MAP_TILE_SIZE * 320 / rayDistance;
-    const lineOffset = 160 - lineHeight / 2;
-    if (lineHeight > 320) {
-      lineHeight = 320;
-    }
+    let lineHeight = MAP_TILE_SIZE * VIEWPORT_WIDTH / rayDistance;
+    const lineOffset = (VIEWPORT_HEIGHT / 2) - lineHeight / 2;
+
+    const buffer = 18; // px between left and right sides
     ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.moveTo(ray * 8 + 530, lineOffset); 
-    ctx.lineTo(ray * 8 + 530, lineOffset + lineHeight);
-    ctx.stroke(); 
+    ctx.moveTo(ray * ctx.lineWidth + (canvas.width / 2) + buffer, lineOffset);
+    ctx.lineTo(ray * ctx.lineWidth + (canvas.width / 2) + buffer, lineOffset + lineHeight);
+    ctx.stroke();
 
     // Increment angle for next ray iteration
-    rayAngle += RADS_PER_DEGREE;
-    if (rayAngle < 0) {
-      rayAngle += Math.PI * 2;
-    }
-    if (rayAngle > Math.PI * 2) {
-      rayAngle -= Math.PI * 2;
-    }
-  
+    rayAngle = clamp(rayAngle + RADS_PER_DEGREE, MIN_ANGLE, MAX_ANGLE);
   }
 };
 
@@ -230,20 +188,12 @@ const update = (tick) => {
   if (isPlayerRotating) {
     const angleDelta = 0.01; // change of angle in radians
     if (state.keys[A_KEY]) {
-      state.playerAngle -= angleDelta;
-      // bounds check; ensure angle is always between 0 and 2*PI
-      if (state.playerAngle < 0) {
-        state.playerAngle += Math.PI * 2
-      }
+      state.playerAngle = clamp(state.playerAngle - angleDelta, MIN_ANGLE, MAX_ANGLE);
       state.playerDeltaX = Math.cos(state.playerAngle);
       state.playerDeltaY = Math.sin(state.playerAngle);
     }
     if (state.keys[D_KEY]) {
-      state.playerAngle += angleDelta;
-      // bounds check; ensure angle is always between 0 and 2*PI
-      if (state.playerAngle > Math.PI * 2) {
-        state.playerAngle -= Math.PI * 2
-      }
+      state.playerAngle = clamp(state.playerAngle + angleDelta, MIN_ANGLE, MAX_ANGLE);
       state.playerDeltaX = Math.cos(state.playerAngle);
       state.playerDeltaY = Math.sin(state.playerAngle);
     }
