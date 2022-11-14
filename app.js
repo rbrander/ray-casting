@@ -165,6 +165,23 @@ const drawRays = () => {
   }
 };
 
+const drawKeyPresses = () => {
+  const keyString = Object.keys(KEY_MAP)
+    .reduce((keyString, key) =>
+      state.keys[key] ? `${keyString} ${KEY_MAP[key]}`.trim() : keyString
+    , '');
+
+  if (keyString === '') {
+    return;
+  }
+
+  ctx.font = '20px Arial';
+  ctx.fillStyle = 'white';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = 'left';
+  ctx.fillText(keyString, 520, 5);
+};
+
 const draw = () => {
   // clear background
   ctx.fillStyle = '#4c4c4c';
@@ -173,6 +190,7 @@ const draw = () => {
   drawMap();
   drawPlayer();
   drawRays();
+  drawKeyPresses();
 };
 
 const update = (tick) => {
@@ -184,18 +202,34 @@ const update = (tick) => {
     state.playerX -= state.playerDeltaX;
     state.playerY -= state.playerDeltaY;
   }
-  const isPlayerRotating = state.keys[A_KEY] || state.keys[D_KEY];
-  if (isPlayerRotating) {
-    const angleDelta = 0.01; // change of angle in radians
-    if (state.keys[A_KEY]) {
-      state.playerAngle = clamp(state.playerAngle - angleDelta, MIN_ANGLE, MAX_ANGLE);
-      state.playerDeltaX = Math.cos(state.playerAngle);
-      state.playerDeltaY = Math.sin(state.playerAngle);
+
+  // Handle the lateral movement of the player
+  const isPlayerMovingLeft = state.keys[A_KEY];
+  const isPlayerMovingRight = state.keys[D_KEY];
+  if (isPlayerMovingLeft || isPlayerMovingRight) {
+    const isStrafing = state.keys[SHIFT_KEY];
+    const HALF_PI = Math.PI / 2;
+    const angleLeft = state.playerAngle - HALF_PI; // Player angle rotated 90° to the left, for strafing
+    if (isPlayerMovingLeft) {
+      if (isStrafing) {
+        state.playerX += Math.cos(angleLeft);
+        state.playerY += Math.sin(angleLeft);
+      } else {
+        // player is rotating
+        state.playerAngle = clamp(state.playerAngle - PLAYER_ROTATION_DELTA, MIN_ANGLE, MAX_ANGLE);
+        state.playerDeltaX = Math.cos(state.playerAngle);
+        state.playerDeltaY = Math.sin(state.playerAngle);
+      }
     }
-    if (state.keys[D_KEY]) {
-      state.playerAngle = clamp(state.playerAngle + angleDelta, MIN_ANGLE, MAX_ANGLE);
-      state.playerDeltaX = Math.cos(state.playerAngle);
-      state.playerDeltaY = Math.sin(state.playerAngle);
+    if (isPlayerMovingRight) {
+      if (isStrafing) {
+        state.playerX -= Math.cos(angleLeft);
+        state.playerY -= Math.sin(angleLeft);
+      } else {
+        state.playerAngle = clamp(state.playerAngle + PLAYER_ROTATION_DELTA, MIN_ANGLE, MAX_ANGLE);
+        state.playerDeltaX = Math.cos(state.playerAngle);
+        state.playerDeltaY = Math.sin(state.playerAngle);
+      }
     }
   }
 };
