@@ -15,11 +15,24 @@
   </style>
   <script src="constants.js"></script>
   <script src="utils.js"></script>
+  <script src="walls.js"></script>
 </head>
 <body>
   <h1>Ray Casting</h1>
   <p>
+    Ray casting allows us to create a virtual 3D view by using just 2D data.
+    On the left side, you will see the top-down 2D view of the map and player (in yellow).
+    On the right side, you will see the virtual 3D view based off the 2D map and player's poistion.
+    The illusion created is done by draw the wall height proportionate to the inverse distance from the player.
+  </p>
+  <p>
     You can use W, A, S, D keys to move around. Holding Shift while pressing A or D will strafe instead of rotate.
+  </p>
+  <p>
+    <label>
+      <input type="checkbox" name="showTexture" id="chkShowTexture" />
+      Show Texture
+    </label>
   </p>
   <canvas id="canvas" width="1024" height="512"></canvas>
   <script src="app.js" defer></script>

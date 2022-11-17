@@ -39,6 +39,19 @@ const MAP = [
 const PLAYER_MOVE_DISTANCE = 5; // pixels
 const COLORS = {
   LIGHT_RED: '#e50000',
-  DARK_RED: '#b20000'
+  DARK_RED: '#b20000',
+  LIGHT_YELLOW: '#e5e500',
+  DARK_YELLOW: '#b2b200'
 }
+const NUM_COLOR_CHANNELS = 4; // red, green, blue, alpha
 
+// Wall Image Textures
+const SPRITE_SHEET_TRANSPARENT_COLOR = 'rgb(152, 0, 136)'; // a purple colour used to indicate special pixels
+const WALL_TEXTURE_FILENAME = 'Wolfenstein3DWallTextures.png';
+const WALL_TEXTURE_SIZE = 32; // 32x32 pixel images
+const WALL_TEXTURE_PADDING = 8; // 8 pixels between textures of transparent color
+const STONE_WALL = {
+  // Each dimension has an array of RGB color string values (32x32)
+  Horizontal: [[SPRITE_SHEET_TRANSPARENT_COLOR]],
+  Vertical: [[SPRITE_SHEET_TRANSPARENT_COLOR]]
+};

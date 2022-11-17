@@ -2,6 +2,7 @@
 
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
+const chkShowTexture = document.getElementById('chkShowTexture');
 
 const state = {
   playerX: 0,
@@ -51,7 +52,7 @@ const drawText = (text, x = 520, y = 10, align = 'left') => {
 const drawRays = () => {
   const NUM_RAYS = 60;
   const NUM_RAYS_PER_SIDE = Math.floor(NUM_RAYS / 2);
-  let rayAngle = clampAngle(state.playerAngle - NUM_RAYS_PER_SIDE * RADS_PER_DEGREE);
+  let rayAngle = limitAngleRange(state.playerAngle - NUM_RAYS_PER_SIDE * RADS_PER_DEGREE);
   let xOffset, yOffset;
   let horizontalWallRayLength = 999999, verticalWallRayLength = 999999;
 
@@ -173,14 +174,14 @@ const drawRays = () => {
     }
 
     // draw the ray line from player to where it collides in the wall
-    const isVerticalRayShorter = (verticalWallRayLength < horizontalWallRayLength);
-    const rayLength = isVerticalRayShorter ? verticalWallRayLength : horizontalWallRayLength;
+    const isVerticalWall = (verticalWallRayLength < horizontalWallRayLength);
+    const rayLength = isVerticalWall ? verticalWallRayLength : horizontalWallRayLength;
     if (shouldDrawRay) {
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(state.playerX, state.playerY);
-      ctx.strokeStyle = isVerticalRayShorter ? COLORS.LIGHT_RED : COLORS.DARK_RED;
-      if (isVerticalRayShorter) {
+      ctx.strokeStyle = isVerticalWall ? COLORS.LIGHT_RED : COLORS.DARK_RED;
+      if (isVerticalWall) {
         ctx.lineTo(verticalRayX, verticalRayY);
       } else {
         ctx.lineTo(horizontalRayX, horizontalRayY);
@@ -191,21 +192,44 @@ const drawRays = () => {
     // draw 3d walls in (320x320) viewport
     const VIEWPORT_WIDTH = 320;
     const VIEWPORT_HEIGHT = 320;
-    let cosineBetweenPlayerAndRay = clampAngle(state.playerAngle - rayAngle);
+    let cosineBetweenPlayerAndRay = limitAngleRange(state.playerAngle - rayAngle);
     const rayDistance = rayLength * Math.cos(cosineBetweenPlayerAndRay); // fixes fish-eye
     let lineHeight = MAP_TILE_SIZE * VIEWPORT_WIDTH / rayDistance;
-    const lineOffset = (VIEWPORT_HEIGHT / 2) - lineHeight / 2;
+    const buffer = 18; // px between left (2d map) and right (3d view) sides of the canvas
+    const lineWidth = 8; // pixels
+    const lineXOffset = ray * lineWidth + (canvas.width / 2) + buffer;
+    const lineYOffset = (VIEWPORT_HEIGHT / 2) - lineHeight / 2;
 
-    const buffer = 18; // px between left and right sides
-    ctx.strokeStyle = isVerticalRayShorter ? COLORS.LIGHT_RED : COLORS.DARK_RED;
-    ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.moveTo(ray * ctx.lineWidth + (canvas.width / 2) + buffer, lineOffset);
-    ctx.lineTo(ray * ctx.lineWidth + (canvas.width / 2) + buffer, lineOffset + lineHeight);
-    ctx.stroke();
+    ctx.lineWidth = lineWidth;
+    if (chkShowTexture.checked) {
+      // divide the legnth of the vertical line by the sprite size to
+      // determine how large a line segment of that sprite pixel's value colour is
+      // drawn; known as the chunk
+      const chunkLength = lineHeight / WALL_TEXTURE_SIZE;
+      const numLineChunks = WALL_TEXTURE_SIZE; // each pixel may have a different colour, so each chunk needs to equal to one sprite pixel
+      const wall = isVerticalWall ? STONE_WALL.Vertical : STONE_WALL.Horizontal;
+      for (let lineChunk = 0; lineChunk < numLineChunks - 1; lineChunk++) {
+        const xRaySource = isVerticalWall ? verticalRayY : horizontalRayX;
+        const x = Math.floor(((xRaySource % MAP_TILE_SIZE) / MAP_TILE_SIZE) * WALL_TEXTURE_SIZE);
+        const y = lineChunk;
+
+        ctx.strokeStyle = wall[x][y];
+        ctx.beginPath();
+        ctx.moveTo(lineXOffset, lineYOffset + lineChunk * chunkLength);
+        ctx.lineTo(lineXOffset, lineYOffset + (lineChunk + 1) * chunkLength);
+        ctx.stroke();
+      }
+    } else {
+      ctx.strokeStyle = isVerticalWall ? COLORS.LIGHT_RED : COLORS.DARK_RED;
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(ray * ctx.lineWidth + (canvas.width / 2) + buffer, lineYOffset);
+      ctx.lineTo(ray * ctx.lineWidth + (canvas.width / 2) + buffer, lineYOffset + lineHeight);
+      ctx.stroke();
+    }
 
     // Increment angle for next ray iteration
-    rayAngle = clampAngle(rayAngle + RADS_PER_DEGREE);
+    rayAngle = limitAngleRange(rayAngle + RADS_PER_DEGREE);
   }
 };
 
@@ -260,7 +284,7 @@ const update = (tick) => {
         state.playerY += Math.sin(angleLeft);
       } else {
         // player is rotating
-        state.playerAngle = clampAngle(state.playerAngle - PLAYER_ROTATION_DELTA);
+        state.playerAngle = limitAngleRange(state.playerAngle - PLAYER_ROTATION_DELTA);
         state.playerDeltaX = Math.cos(state.playerAngle);
         state.playerDeltaY = Math.sin(state.playerAngle);
       }
@@ -270,7 +294,7 @@ const update = (tick) => {
         state.playerX -= Math.cos(angleLeft);
         state.playerY -= Math.sin(angleLeft);
       } else {
-        state.playerAngle = clampAngle(state.playerAngle + PLAYER_ROTATION_DELTA);
+        state.playerAngle = limitAngleRange(state.playerAngle + PLAYER_ROTATION_DELTA);
         state.playerDeltaX = Math.cos(state.playerAngle);
         state.playerDeltaY = Math.sin(state.playerAngle);
       }
