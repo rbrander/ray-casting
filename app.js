@@ -40,15 +40,23 @@ const drawPlayer = () => {
   ctx.stroke();
 };
 
+const drawText = (text, x = 520, y = 10, align = 'left') => {
+  ctx.font = '20px Arial';
+  ctx.fillStyle = 'white';
+  ctx.textBaseline = 'top';
+  ctx.textAlign = align;
+  ctx.fillText(text, x, y);
+}
+
 const drawRays = () => {
   const NUM_RAYS = 60;
-  const NUM_RAYS_PER_SIDE = NUM_RAYS / 2;
-  let rayAngle = clamp(state.playerAngle - NUM_RAYS_PER_SIDE * RADS_PER_DEGREE, MIN_ANGLE, MAX_ANGLE);
+  const NUM_RAYS_PER_SIDE = Math.floor(NUM_RAYS / 2);
+  let rayAngle = clampAngle(state.playerAngle - NUM_RAYS_PER_SIDE * RADS_PER_DEGREE);
   let xOffset, yOffset;
   let horizontalWallRayLength = 999999, verticalWallRayLength = 999999;
 
-
   for (let ray = 0; ray < NUM_RAYS; ray++) {
+    const shouldDrawRay = ray === Math.floor(NUM_RAYS / 2);
     horizontalWallRayLength = 999999, verticalWallRayLength = 999999
     let depthOfField = 0;
 
@@ -58,14 +66,20 @@ const drawRays = () => {
     const isLookingDown = rayAngle < Math.PI;
     let horizontalRayY = state.playerY, horizontalRayX = state.playerX;
     if (isLookingUp) {
+      if (shouldDrawRay) {
+        drawText('is looking up')
+      }
       horizontalRayY = Math.floor(state.playerY / MAP_TILE_SIZE) * MAP_TILE_SIZE - 0.0001;
-      horizontalRayX =  (state.playerY - horizontalRayY) * aTan + state.playerX;
-      yOffset = -64;
+      horizontalRayX = (state.playerY - horizontalRayY) * aTan + state.playerX;
+      yOffset = -MAP_TILE_SIZE;
       xOffset = -yOffset * aTan;
     } else if (isLookingDown) {
+      if (shouldDrawRay) {
+        drawText('is looking down')
+      }
       horizontalRayY = (Math.floor(state.playerY / MAP_TILE_SIZE) + 1) * MAP_TILE_SIZE;
       horizontalRayX =  (state.playerY - horizontalRayY) * aTan + state.playerX;
-      yOffset = 64;
+      yOffset = MAP_TILE_SIZE;
       xOffset = -yOffset * aTan;
     } else { // looking left or right
       horizontalRayX = state.playerX;
@@ -73,6 +87,14 @@ const drawRays = () => {
       depthOfField = 8;
     }
     while (depthOfField < 8) {
+      // draw a dot at the point of intersection
+      if (shouldDrawRay) {
+        ctx.fillStyle = 'red';
+        ctx.beginPath();
+        ctx.arc(horizontalRayX, horizontalRayY, 5, MIN_ANGLE, MAX_ANGLE);
+        ctx.fill();
+      }
+
       const mapX = Math.floor(horizontalRayX / MAP_TILE_SIZE)
       const mapY = Math.floor(horizontalRayY / MAP_TILE_SIZE)
       const mapOffset = mapY * MAP_WIDTH + mapX;
@@ -83,6 +105,12 @@ const drawRays = () => {
         // stop the loop
         depthOfField = 8;
         horizontalWallRayLength = getLineLength(state.playerX, state.playerY, horizontalRayX, horizontalRayY);
+
+        if (shouldDrawRay) {
+          // fill the box for the wall that was hit
+          ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+          ctx.fillRect(mapX * MAP_TILE_SIZE, mapY * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE);
+        }
       } else {
         horizontalRayX += xOffset;
         horizontalRayY += yOffset;
@@ -100,12 +128,12 @@ const drawRays = () => {
     if (isLookingLeft) {
       verticalRayX = Math.floor(state.playerX / MAP_TILE_SIZE) * MAP_TILE_SIZE - 0.001;
       verticalRayY =  (state.playerX - verticalRayX) * negativeTan + state.playerY;
-      xOffset = -64;
+      xOffset = -MAP_TILE_SIZE;
       yOffset = -xOffset * negativeTan;
     } else if (isLookingRight) {
       verticalRayX = (Math.floor(state.playerX / MAP_TILE_SIZE) + 1) * MAP_TILE_SIZE;
       verticalRayY =  (state.playerX - verticalRayX) * negativeTan + state.playerY;
-      xOffset = 64;
+      xOffset = MAP_TILE_SIZE;
       yOffset = -xOffset * negativeTan;
     } else { // looking up or down
       verticalRayX = state.playerX;
@@ -113,6 +141,14 @@ const drawRays = () => {
       depthOfField = 8;
     }
     while (depthOfField < 8) {
+      // draw a dot at the point of intersection
+      if (shouldDrawRay) {
+        ctx.fillStyle = 'green';
+        ctx.beginPath();
+        ctx.arc(verticalRayX, verticalRayY, 5, MIN_ANGLE, MAX_ANGLE);
+        ctx.fill();
+      }
+
       const mapX = Math.floor(verticalRayX / MAP_TILE_SIZE)
       const mapY = Math.floor(verticalRayY / MAP_TILE_SIZE)
       const mapOffset = mapY * MAP_WIDTH + mapX;
@@ -123,6 +159,12 @@ const drawRays = () => {
         // stop the loop
         depthOfField = 8;
         verticalWallRayLength = getLineLength(state.playerX, state.playerY, verticalRayX, verticalRayY);
+
+        if (shouldDrawRay) {
+          // colour the wall green, that was hit
+          ctx.fillStyle = 'rgba(0, 255, 0, 0.4)';
+          ctx.fillRect(mapX * MAP_TILE_SIZE, mapY * MAP_TILE_SIZE, MAP_TILE_SIZE, MAP_TILE_SIZE);
+        }
       } else {
         verticalRayX += xOffset;
         verticalRayY += yOffset;
@@ -130,30 +172,32 @@ const drawRays = () => {
       }
     }
 
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(state.playerX, state.playerY);
-    let rayLength;
-    if (verticalWallRayLength < horizontalWallRayLength) {
-      ctx.strokeStyle = COLORS.LIGHT_RED;
-      ctx.lineTo(verticalRayX, verticalRayY);
-      rayLength = verticalWallRayLength;
-    } else {
-      ctx.strokeStyle = COLORS.DARK_RED;
-      ctx.lineTo(horizontalRayX, horizontalRayY);
-      rayLength = horizontalWallRayLength;
+    // draw the ray line from player to where it collides in the wall
+    const isVerticalRayShorter = (verticalWallRayLength < horizontalWallRayLength);
+    const rayLength = isVerticalRayShorter ? verticalWallRayLength : horizontalWallRayLength;
+    if (shouldDrawRay) {
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(state.playerX, state.playerY);
+      ctx.strokeStyle = isVerticalRayShorter ? COLORS.LIGHT_RED : COLORS.DARK_RED;
+      if (isVerticalRayShorter) {
+        ctx.lineTo(verticalRayX, verticalRayY);
+      } else {
+        ctx.lineTo(horizontalRayX, horizontalRayY);
+      }
+      ctx.stroke();
     }
-    ctx.stroke();
 
     // draw 3d walls in (320x320) viewport
     const VIEWPORT_WIDTH = 320;
     const VIEWPORT_HEIGHT = 320;
-    let cosineBetweenPlayerAndRay = clamp(state.playerAngle - rayAngle, MIN_ANGLE, MAX_ANGLE);
+    let cosineBetweenPlayerAndRay = clampAngle(state.playerAngle - rayAngle);
     const rayDistance = rayLength * Math.cos(cosineBetweenPlayerAndRay); // fixes fish-eye
     let lineHeight = MAP_TILE_SIZE * VIEWPORT_WIDTH / rayDistance;
     const lineOffset = (VIEWPORT_HEIGHT / 2) - lineHeight / 2;
 
     const buffer = 18; // px between left and right sides
+    ctx.strokeStyle = isVerticalRayShorter ? COLORS.LIGHT_RED : COLORS.DARK_RED;
     ctx.lineWidth = 8;
     ctx.beginPath();
     ctx.moveTo(ray * ctx.lineWidth + (canvas.width / 2) + buffer, lineOffset);
@@ -161,7 +205,7 @@ const drawRays = () => {
     ctx.stroke();
 
     // Increment angle for next ray iteration
-    rayAngle = clamp(rayAngle + RADS_PER_DEGREE, MIN_ANGLE, MAX_ANGLE);
+    rayAngle = clampAngle(rayAngle + RADS_PER_DEGREE);
   }
 };
 
@@ -216,7 +260,7 @@ const update = (tick) => {
         state.playerY += Math.sin(angleLeft);
       } else {
         // player is rotating
-        state.playerAngle = clamp(state.playerAngle - PLAYER_ROTATION_DELTA, MIN_ANGLE, MAX_ANGLE);
+        state.playerAngle = clampAngle(state.playerAngle - PLAYER_ROTATION_DELTA);
         state.playerDeltaX = Math.cos(state.playerAngle);
         state.playerDeltaY = Math.sin(state.playerAngle);
       }
@@ -226,7 +270,7 @@ const update = (tick) => {
         state.playerX -= Math.cos(angleLeft);
         state.playerY -= Math.sin(angleLeft);
       } else {
-        state.playerAngle = clamp(state.playerAngle + PLAYER_ROTATION_DELTA, MIN_ANGLE, MAX_ANGLE);
+        state.playerAngle = clampAngle(state.playerAngle + PLAYER_ROTATION_DELTA);
         state.playerDeltaX = Math.cos(state.playerAngle);
         state.playerDeltaY = Math.sin(state.playerAngle);
       }
