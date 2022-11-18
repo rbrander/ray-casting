@@ -1,5 +1,10 @@
 // app.js
 
+// TODO
+// - add scaling
+// - optionally display 2d view
+// - higher resolution (8px lines down to 4px, compensate using twice the number of rays)
+
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 const chkShowTexture = document.getElementById('chkShowTexture');
@@ -57,6 +62,13 @@ const drawRays = () => {
   let rayAngle = limitAngleRange(state.playerAngle - NUM_RAYS_PER_SIDE * RADS_PER_DEGREE);
   let xOffset, yOffset;
   let horizontalWallRayLength = 999999, verticalWallRayLength = 999999;
+
+  // draw background
+  ctx.fillStyle = '#444444';
+  ctx.fillRect(528, 0, 512-32-2, 160);
+  ctx.fillStyle = '#777777';
+  ctx.fillRect(528, 160, 512-32-2, 512-160);
+
 
   for (let ray = 0; ray < NUM_RAYS; ray++) {
     const shouldDrawRay = ray === Math.floor(NUM_RAYS / 2);
@@ -185,7 +197,7 @@ const drawRays = () => {
       ctx.stroke();
     }
 
-    // draw 3d walls in (320x320) viewport
+    // draw 3D walls in (320x320) viewport
     const VIEWPORT_WIDTH = 320;
     const VIEWPORT_HEIGHT = 320;
     let cosineBetweenPlayerAndRay = limitAngleRange(state.playerAngle - rayAngle);
@@ -246,7 +258,6 @@ const drawFPS = () => {
   // show the frames per second in the upper right corner
   drawText(`${state.fps.toString()} FPS`, canvas.width - 8, 8, 'right');
 }
-
 
 const draw = () => {
   // clear background
