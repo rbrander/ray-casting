@@ -10,7 +10,9 @@ const state = {
   playerDeltaX: 1,
   playerDeltaY: 0,
   playerAngle: 0,
-  keys: {}
+  keys: {},
+  lastTick: 0,
+  FPS: 0
 };
 
 const drawMap = () => {
@@ -67,17 +69,11 @@ const drawRays = () => {
     const isLookingDown = rayAngle < Math.PI;
     let horizontalRayY = state.playerY, horizontalRayX = state.playerX;
     if (isLookingUp) {
-      if (shouldDrawRay) {
-        drawText('is looking up')
-      }
       horizontalRayY = Math.floor(state.playerY / MAP_TILE_SIZE) * MAP_TILE_SIZE - 0.0001;
       horizontalRayX = (state.playerY - horizontalRayY) * aTan + state.playerX;
       yOffset = -MAP_TILE_SIZE;
       xOffset = -yOffset * aTan;
     } else if (isLookingDown) {
-      if (shouldDrawRay) {
-        drawText('is looking down')
-      }
       horizontalRayY = (Math.floor(state.playerY / MAP_TILE_SIZE) + 1) * MAP_TILE_SIZE;
       horizontalRayX =  (state.playerY - horizontalRayY) * aTan + state.playerX;
       yOffset = MAP_TILE_SIZE;
@@ -243,12 +239,14 @@ const drawKeyPresses = () => {
     return;
   }
 
-  ctx.font = '20px Arial';
-  ctx.fillStyle = 'white';
-  ctx.textBaseline = 'top';
-  ctx.textAlign = 'left';
-  ctx.fillText(keyString, 520, 5);
+  drawText(keyString, 520, 5, 'left');
 };
+
+const drawFPS = () => {
+  // show the frames per second in the upper right corner
+  drawText(`${state.fps.toString()} FPS`, canvas.width - 8, 8, 'right');
+}
+
 
 const draw = () => {
   // clear background
@@ -259,16 +257,18 @@ const draw = () => {
   drawPlayer();
   drawRays();
   drawKeyPresses();
+  drawFPS();
 };
 
 const update = (tick) => {
+  const frameRateAdjustment = state.fps / 100; // a factor applied to movemet to make it consistent
   if (state.keys[W_KEY]) {
-    state.playerX += state.playerDeltaX;
-    state.playerY += state.playerDeltaY;
+    state.playerX += state.playerDeltaX * frameRateAdjustment;
+    state.playerY += state.playerDeltaY * frameRateAdjustment;
   }
   if (state.keys[S_KEY]) {
-    state.playerX -= state.playerDeltaX;
-    state.playerY -= state.playerDeltaY;
+    state.playerX -= state.playerDeltaX * frameRateAdjustment;
+    state.playerY -= state.playerDeltaY * frameRateAdjustment;
   }
 
   // Handle the lateral movement of the player
@@ -280,32 +280,34 @@ const update = (tick) => {
     const angleLeft = state.playerAngle - HALF_PI; // Player angle rotated 90° to the left, for strafing
     if (isPlayerMovingLeft) {
       if (isStrafing) {
-        state.playerX += Math.cos(angleLeft);
-        state.playerY += Math.sin(angleLeft);
+        state.playerX += Math.cos(angleLeft) * frameRateAdjustment;
+        state.playerY += Math.sin(angleLeft) * frameRateAdjustment;
       } else {
         // player is rotating
-        state.playerAngle = limitAngleRange(state.playerAngle - PLAYER_ROTATION_DELTA);
-        state.playerDeltaX = Math.cos(state.playerAngle);
-        state.playerDeltaY = Math.sin(state.playerAngle);
+        state.playerAngle = limitAngleRange(state.playerAngle - PLAYER_ROTATION_DELTA * frameRateAdjustment);
+        state.playerDeltaX = Math.cos(state.playerAngle) * frameRateAdjustment;
+        state.playerDeltaY = Math.sin(state.playerAngle) * frameRateAdjustment;
       }
     }
     if (isPlayerMovingRight) {
       if (isStrafing) {
-        state.playerX -= Math.cos(angleLeft);
-        state.playerY -= Math.sin(angleLeft);
+        state.playerX -= Math.cos(angleLeft) * frameRateAdjustment;
+        state.playerY -= Math.sin(angleLeft) * frameRateAdjustment;
       } else {
-        state.playerAngle = limitAngleRange(state.playerAngle + PLAYER_ROTATION_DELTA);
-        state.playerDeltaX = Math.cos(state.playerAngle);
-        state.playerDeltaY = Math.sin(state.playerAngle);
+        state.playerAngle = limitAngleRange(state.playerAngle + PLAYER_ROTATION_DELTA * frameRateAdjustment);
+        state.playerDeltaX = Math.cos(state.playerAngle) * frameRateAdjustment;
+        state.playerDeltaY = Math.sin(state.playerAngle) * frameRateAdjustment;
       }
     }
   }
 };
 
 const loop = (tick) => {
+  state.fps = Math.floor(MS_PER_SECOND/(tick - state.lastTick));
   update(tick);
   draw(tick);
   requestAnimationFrame(loop);
+  state.lastTick = tick;
 };
 
 const onKeyUp = (event) => {

@@ -44,6 +44,7 @@ const COLORS = {
   DARK_YELLOW: '#b2b200'
 }
 const NUM_COLOR_CHANNELS = 4; // red, green, blue, alpha
+const MS_PER_SECOND = 1000;
 
 // Wall Image Textures
 const SPRITE_SHEET_TRANSPARENT_COLOR = 'rgb(152, 0, 136)'; // a purple colour used to indicate special pixels
